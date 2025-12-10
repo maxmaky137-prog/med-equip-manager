@@ -83,11 +83,16 @@ export const DataService = {
     return stored ? JSON.parse(stored) : [...MOCK_ASSETS];
   },
 
-  addAsset: async (asset: Omit<Asset, 'id'>): Promise<Asset> => {
+  addAsset: async (asset: Partial<Asset>): Promise<Asset> => {
+    // Use provided ID or generate one
+    const newId = asset.id && asset.id.trim() !== '' 
+        ? asset.id 
+        : `EQ-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}`;
+
     const newAsset = { 
         ...asset, 
-        id: `EQ-${Math.floor(Math.random() * 10000).toString().padStart(4, '0')}` 
-    };
+        id: newId
+    } as Asset;
 
     if (useApi()) {
       await apiPost('Assets', 'add', newAsset);
@@ -96,6 +101,11 @@ export const DataService = {
     
     await delay(300);
     const currentAssets = await DataService.getAssets();
+    // Check for duplicate ID locally
+    if (currentAssets.some(a => a.id === newAsset.id)) {
+        throw new Error('Asset ID already exists');
+    }
+
     const updatedAssets = [newAsset, ...currentAssets];
     localStorage.setItem('ME_Assets', JSON.stringify(updatedAssets));
     return newAsset;
