@@ -23,14 +23,18 @@ const App: React.FC = () => {
     logoUrl: '',
     backgroundUrl: '',
     telegramBotToken: '',
-    telegramChatId: ''
+    telegramChatId: '',
+    googleScriptUrl: '',
+    departments: ['ER', 'ICU', 'OPD', 'Radiology', 'Pediatrics']
   });
 
   useEffect(() => {
     // Load settings on boot
     const saved = localStorage.getItem('medEquipSettings');
     if (saved) {
-        setSettings(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if(!parsed.departments) parsed.departments = ['ER', 'ICU', 'OPD', 'Radiology', 'Pediatrics'];
+        setSettings(parsed);
     }
   }, []);
 
@@ -42,7 +46,7 @@ const App: React.FC = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard': return <Dashboard />;
-      case 'assets': return <AssetList />;
+      case 'assets': return <AssetList settings={settings} setActiveTab={setActiveTab} />;
       case 'checks': return <DailyCheck />;
       case 'maintenance': return <MaintenanceView />;
       case 'loans': return <LoanSystem />;

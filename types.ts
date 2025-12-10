@@ -25,6 +25,7 @@ export interface Asset {
   nextPmDate: string;
   image?: string;
   manualUrl?: string; // Link to PDF or Document
+  googleDriveUrl?: string; // Link to Google Drive Folder
 }
 
 export interface CheckItem {
@@ -94,5 +95,6 @@ export interface AppSettings {
   backgroundUrl: string;
   telegramBotToken: string;
   telegramChatId: string;
-  googleScriptUrl?: string; // New field for API
+  googleScriptUrl?: string;
+  departments?: string[]; // Dynamic Department List
 }
