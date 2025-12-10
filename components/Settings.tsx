@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Save, Image as ImageIcon, MessageCircle, Hospital, Database, Download, Upload, Cloud } from 'lucide-react';
+import { Save, Image as ImageIcon, MessageCircle, Hospital, Database, Download, Upload, Cloud, Layers, Plus, Trash2 } from 'lucide-react';
 import { AppSettings } from '../types';
 import { DataService } from '../services/dataService';
 
@@ -15,13 +15,19 @@ const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
     backgroundUrl: '',
     telegramBotToken: '',
     telegramChatId: '',
-    googleScriptUrl: ''
+    googleScriptUrl: '',
+    departments: ['ER', 'ICU', 'OPD', 'Radiology', 'Pediatrics'] // Defaults
   });
+
+  const [newDept, setNewDept] = useState('');
 
   useEffect(() => {
     const saved = localStorage.getItem('medEquipSettings');
     if (saved) {
-      setSettings(JSON.parse(saved));
+      const parsed = JSON.parse(saved);
+      // Ensure departments exist even if old config is loaded
+      if (!parsed.departments) parsed.departments = ['ER', 'ICU', 'OPD', 'Radiology', 'Pediatrics'];
+      setSettings(parsed);
     }
   }, []);
 
@@ -45,6 +51,26 @@ const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
       };
       reader.readAsDataURL(file);
     }
+  };
+
+  // Department Logic
+  const handleAddDept = () => {
+      if (newDept.trim() && !settings.departments?.includes(newDept.trim())) {
+          setSettings(prev => ({
+              ...prev,
+              departments: [...(prev.departments || []), newDept.trim()]
+          }));
+          setNewDept('');
+      }
+  };
+
+  const handleRemoveDept = (dept: string) => {
+      if (confirm(`ต้องการลบแผนก ${dept} ออกจากรายการตัวเลือก?`)) {
+        setSettings(prev => ({
+            ...prev,
+            departments: prev.departments?.filter(d => d !== dept)
+        }));
+      }
   };
 
   const handleExportData = async () => {
@@ -129,6 +155,45 @@ const Settings: React.FC<SettingsProps> = ({ onSettingsChange }) => {
                />
              </div>
           </div>
+        </div>
+
+        {/* Department Management */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-5">
+            <h3 className="font-bold text-xl text-slate-800 flex items-center border-b pb-3">
+                <Layers className="w-5 h-5 mr-3 text-indigo-500" /> จัดการแผนก (Departments)
+            </h3>
+            
+            <div className="flex space-x-2">
+                <input 
+                    value={newDept}
+                    onChange={(e) => setNewDept(e.target.value)}
+                    className="flex-1 border rounded-lg px-3 py-2 bg-slate-50 focus:ring-2 focus:ring-indigo-500 focus:outline-none"
+                    placeholder="เพิ่มแผนกใหม่..."
+                />
+                <button 
+                    onClick={handleAddDept}
+                    className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition flex items-center"
+                >
+                    <Plus className="w-4 h-4" />
+                </button>
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-2 max-h-60 overflow-y-auto space-y-2">
+                {settings.departments?.map((dept, index) => (
+                    <div key={index} className="flex justify-between items-center bg-white p-2 rounded border border-slate-200 shadow-sm">
+                        <span className="text-slate-700 font-medium">{dept}</span>
+                        <button 
+                            onClick={() => handleRemoveDept(dept)}
+                            className="text-slate-400 hover:text-red-500 transition"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
+                ))}
+                {(!settings.departments || settings.departments.length === 0) && (
+                    <p className="text-center text-slate-400 text-sm py-4">ยังไม่มีข้อมูลแผนก</p>
+                )}
+            </div>
         </div>
 
         <div className="space-y-6">

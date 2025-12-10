@@ -1,10 +1,15 @@
 
 import React, { useEffect, useState } from 'react';
-import { Asset, AssetStatus } from '../types';
+import { Asset, AssetStatus, AppSettings } from '../types';
 import { DataService } from '../services/dataService';
-import { Search, Filter, Plus, MoreVertical, X, Save, FileText, ExternalLink } from 'lucide-react';
+import { Search, Filter, Plus, MoreVertical, X, Save, FileText, ExternalLink, HardDrive, Settings as SettingsIcon } from 'lucide-react';
 
-const AssetList: React.FC = () => {
+interface AssetListProps {
+  settings?: AppSettings;
+  setActiveTab?: (tab: string) => void;
+}
+
+const AssetList: React.FC<AssetListProps> = ({ settings, setActiveTab }) => {
   const [assets, setAssets] = useState<Asset[]>([]);
   const [search, setSearch] = useState('');
   const [filterDept, setFilterDept] = useState('All');
@@ -12,6 +17,7 @@ const AssetList: React.FC = () => {
   
   // New Asset Form State
   const [newAsset, setNewAsset] = useState<Partial<Asset>>({
+    id: '',
     name: '',
     brand: '',
     model: '',
@@ -22,6 +28,7 @@ const AssetList: React.FC = () => {
     status: AssetStatus.ACTIVE,
     nextPmDate: '',
     manualUrl: '',
+    googleDriveUrl: ''
   });
 
   useEffect(() => {
@@ -31,15 +38,19 @@ const AssetList: React.FC = () => {
   const handleAddAsset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (newAsset.name && newAsset.serialNumber) {
-        const added = await DataService.addAsset(newAsset as Omit<Asset, 'id'>);
-        setAssets([added, ...assets]);
-        setIsModalOpen(false);
-        // Reset form
-        setNewAsset({
-            name: '', brand: '', model: '', serialNumber: '', department: '', 
-            purchaseDate: '', price: 0, status: AssetStatus.ACTIVE, nextPmDate: '', manualUrl: ''
-        });
-        alert('เพิ่มครุภัณฑ์เรียบร้อยแล้ว');
+        try {
+            const added = await DataService.addAsset(newAsset);
+            setAssets([added, ...assets]);
+            setIsModalOpen(false);
+            // Reset form
+            setNewAsset({
+                id: '', name: '', brand: '', model: '', serialNumber: '', department: '', 
+                purchaseDate: '', price: 0, status: AssetStatus.ACTIVE, nextPmDate: '', manualUrl: '', googleDriveUrl: ''
+            });
+            alert('เพิ่มครุภัณฑ์เรียบร้อยแล้ว');
+        } catch (error: any) {
+            alert('เกิดข้อผิดพลาด: ' + error.message);
+        }
     }
   };
 
@@ -61,6 +72,7 @@ const AssetList: React.FC = () => {
     }
   };
 
+  const departments = settings?.departments || ['ER', 'ICU', 'OPD', 'Radiology', 'Pediatrics'];
   const uniqueDepts = Array.from(new Set(assets.map(a => a.department)));
 
   return (
@@ -138,14 +150,19 @@ const AssetList: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    {asset.manualUrl ? (
-                      <a href={asset.manualUrl} target="_blank" rel="noopener noreferrer" className="text-red-500 hover:text-red-700 flex items-center gap-1" title="คู่มือ/เอกสาร">
-                         <FileText className="w-5 h-5" />
-                         <span className="text-xs hidden lg:inline">PDF</span>
-                      </a>
-                    ) : (
-                      <span className="text-slate-300">-</span>
-                    )}
+                    <div className="flex space-x-2">
+                        {asset.manualUrl && (
+                        <a href={asset.manualUrl} target="_blank" rel="noopener noreferrer" className="text-red-500 hover:text-red-700 flex items-center gap-1" title="คู่มือ/เอกสาร">
+                            <FileText className="w-5 h-5" />
+                        </a>
+                        )}
+                        {asset.googleDriveUrl && (
+                        <a href={asset.googleDriveUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700 flex items-center gap-1" title="Google Drive">
+                            <HardDrive className="w-5 h-5" />
+                        </a>
+                        )}
+                        {!asset.manualUrl && !asset.googleDriveUrl && <span className="text-slate-300">-</span>}
+                    </div>
                   </td>
                   <td className="px-6 py-4 font-mono text-xs">{asset.serialNumber}</td>
                   <td className="px-6 py-4">{asset.department}</td>
@@ -191,6 +208,16 @@ const AssetList: React.FC = () => {
                 <form onSubmit={handleAddAsset} className="p-6 space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">เลขครุภัณฑ์ (Asset ID)</label>
+                            <input type="text" className="w-full border rounded-lg px-3 py-2 bg-slate-50" placeholder="ว่างไว้เพื่อสร้างอัตโนมัติ"
+                                value={newAsset.id} onChange={e => setNewAsset({...newAsset, id: e.target.value})} />
+                        </div>
+                         <div>
+                            <label className="block text-sm font-medium text-slate-700 mb-1">Serial Number *</label>
+                            <input type="text" required className="w-full border rounded-lg px-3 py-2" 
+                                value={newAsset.serialNumber} onChange={e => setNewAsset({...newAsset, serialNumber: e.target.value})} />
+                        </div>
+                        <div className="md:col-span-2">
                             <label className="block text-sm font-medium text-slate-700 mb-1">ชื่อครุภัณฑ์ *</label>
                             <input type="text" required className="w-full border rounded-lg px-3 py-2" 
                                 value={newAsset.name} onChange={e => setNewAsset({...newAsset, name: e.target.value})} />
@@ -205,21 +232,29 @@ const AssetList: React.FC = () => {
                             <input type="text" className="w-full border rounded-lg px-3 py-2" 
                                 value={newAsset.model} onChange={e => setNewAsset({...newAsset, model: e.target.value})} />
                         </div>
+                       
                         <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">Serial Number *</label>
-                            <input type="text" required className="w-full border rounded-lg px-3 py-2" 
-                                value={newAsset.serialNumber} onChange={e => setNewAsset({...newAsset, serialNumber: e.target.value})} />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-700 mb-1">แผนก *</label>
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="block text-sm font-medium text-slate-700">แผนก *</label>
+                                {setActiveTab && (
+                                    <button 
+                                        type="button" 
+                                        onClick={() => {
+                                            setIsModalOpen(false);
+                                            setActiveTab('settings');
+                                        }}
+                                        className="text-xs text-primary-600 hover:underline flex items-center"
+                                    >
+                                        <SettingsIcon className="w-3 h-3 mr-1" /> จัดการแผนก
+                                    </button>
+                                )}
+                            </div>
                             <select className="w-full border rounded-lg px-3 py-2 bg-white" required
                                 value={newAsset.department} onChange={e => setNewAsset({...newAsset, department: e.target.value})}>
                                 <option value="">เลือกแผนก</option>
-                                <option value="ER">ER</option>
-                                <option value="ICU">ICU</option>
-                                <option value="OPD">OPD</option>
-                                <option value="Radiology">Radiology</option>
-                                <option value="Pediatrics">Pediatrics</option>
+                                {departments.map(d => (
+                                    <option key={d} value={d}>{d}</option>
+                                ))}
                             </select>
                         </div>
                         <div>
@@ -237,17 +272,31 @@ const AssetList: React.FC = () => {
                             <input type="date" className="w-full border rounded-lg px-3 py-2" 
                                 value={newAsset.nextPmDate} onChange={e => setNewAsset({...newAsset, nextPmDate: e.target.value})} />
                         </div>
-                        <div className="md:col-span-2">
-                             <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
-                                <FileText className="w-4 h-4 mr-1" /> ลิงก์เอกสารคู่มือ (PDF URL)
-                             </label>
-                             <input 
-                                type="url" 
-                                placeholder="https://example.com/manual.pdf"
-                                className="w-full border rounded-lg px-3 py-2" 
-                                value={newAsset.manualUrl} 
-                                onChange={e => setNewAsset({...newAsset, manualUrl: e.target.value})} 
-                             />
+                        <div className="md:col-span-2 space-y-2">
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
+                                    <FileText className="w-4 h-4 mr-1 text-red-500" /> ลิงก์เอกสารคู่มือ (PDF URL)
+                                </label>
+                                <input 
+                                    type="url" 
+                                    placeholder="https://example.com/manual.pdf"
+                                    className="w-full border rounded-lg px-3 py-2" 
+                                    value={newAsset.manualUrl} 
+                                    onChange={e => setNewAsset({...newAsset, manualUrl: e.target.value})} 
+                                />
+                             </div>
+                             <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center">
+                                    <HardDrive className="w-4 h-4 mr-1 text-blue-500" /> ลิงก์ Google Drive
+                                </label>
+                                <input 
+                                    type="url" 
+                                    placeholder="https://drive.google.com/..."
+                                    className="w-full border rounded-lg px-3 py-2" 
+                                    value={newAsset.googleDriveUrl} 
+                                    onChange={e => setNewAsset({...newAsset, googleDriveUrl: e.target.value})} 
+                                />
+                             </div>
                         </div>
                     </div>
                     <div className="pt-4 flex justify-end space-x-3">
