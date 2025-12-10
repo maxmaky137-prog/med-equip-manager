@@ -1,0 +1,5 @@
+{
+  "name": "ระบบจัดการอุปกรณ์ งานกายภาพบำบัด ",
+  "description": "A comprehensive web-based Medical Equipment Management System featuring asset registry, daily readiness checks, maintenance scheduling (PM/CM), and loan tracking. Designed to integrate with Google Sheets.",
+  "requestFramePermissions": []
+}
